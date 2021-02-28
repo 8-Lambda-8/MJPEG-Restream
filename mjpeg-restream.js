@@ -1,7 +1,13 @@
 const http = require('http');
 const { EventEmitter } = require('events');
+const request = require("request");
+const MjpegConsumer = require("mjpeg-consumer");
+const { Image, createCanvas } = require("canvas");
+const sizeOf = require('buffer-image-size');
 var request = require("request");
 var MjpegConsumer = require("mjpeg-consumer");
+const dateFormat = require("dateformat");
+dateFormat.masks.default = "dd.mm.yy HH:MM:ss"
 
 let globalBuffer;
 const emitter = new EventEmitter();
@@ -34,6 +40,30 @@ function newFrame(buffer) {
     lastFrameTimestamp = Date.now();
 }
 
+function connectionLostFrame(buffer) {
+    console.log("sending connectionLostFrame")
+    var dimensions = sizeOf(buffer);
+    const canvas = createCanvas(dimensions.width, dimensions.height);
+    const ctx = canvas.getContext("2d");
+
+    const img = new Image();
+    img.onload = () => ctx.drawImage(img, 0, 0);
+    img.onerror = err => { throw err };
+    img.src = globalBuffer;
+
+    ctx.fillStyle = "#222222";
+    ctx.fillRect(0, 0, dimensions.width, dimensions.height / 8);
+    ctx.fillStyle = "#f2f2f2";
+    ctx.font = "16px Arial";
+    ctx.fillText("Connection to Camera lost", 13, 20);
+    ctx.fillText("Last Frame: " + dateFormat(lastFrameTimestamp), 13, 45);
+
+    buffer = canvas.toBuffer("image/jpeg");
+    emitter.emit('frame');
+
+    globalBuffer = buffer;
+}
+
 let consumer = new MjpegConsumer();
 
 let req = request("http://10.0.1.18:81/stream");
@@ -41,17 +71,21 @@ req.pipe(consumer).on('data', (frame) => newFrame(frame));
 
 setInterval(() => {
     console.log(lastFrameTimestamp);
-    if (lastFrameTimestamp+1000 < Date.now()) {
+
+    if (lastFrameTimestamp + 2000 < Date.now()) {
         console.log("last Frame older 2 sec");
         console.log("try Reconnect");
         req.abort();
         this.connection = null;
         req = request("http://10.0.1.18:81/stream");
 
-        req.on('error', err=> console.log(err));
+        req.on('error', err => console.log(err));
         
         consumer = new MjpegConsumer();
         req.pipe(consumer).on('data', (frame) => newFrame(frame));
+    }
         
+    if (lastFrameTimestamp + 5000 < Date.now()) {
+        connectionLostFrame(globalBuffer)
     }
 }, 2000);

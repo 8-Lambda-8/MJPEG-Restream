@@ -1,5 +1,9 @@
 {
   "dependencies": {
+    "buffer-image-size": "^0.6.4",
+    "canvas": "^2.6.1",
+    "dateformat": "^4.5.1",
+    "fs": "^0.0.1-security",
     "mjpeg-consumer": "^2.0.0"
   }
 }
