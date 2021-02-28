@@ -4,14 +4,18 @@ const request = require("request");
 const MjpegConsumer = require("mjpeg-consumer");
 const { Image, createCanvas } = require("canvas");
 const sizeOf = require('buffer-image-size');
-var request = require("request");
-var MjpegConsumer = require("mjpeg-consumer");
+const fs = require("fs");
 const dateFormat = require("dateformat");
 dateFormat.masks.default = "dd.mm.yy HH:MM:ss"
 
 let globalBuffer;
 const emitter = new EventEmitter();
 let lastFrameTimestamp = 0;
+
+fs.readFile('init.jpeg', (err, buf) => {
+    if (err) throw err
+    globalBuffer = buf;
+});
 
 const server = http.createServer((req, res) => {
     res.writeHead(200, {
@@ -80,11 +84,11 @@ setInterval(() => {
         req = request("http://10.0.1.18:81/stream");
 
         req.on('error', err => console.log(err));
-        
+
         consumer = new MjpegConsumer();
         req.pipe(consumer).on('data', (frame) => newFrame(frame));
     }
-        
+
     if (lastFrameTimestamp + 5000 < Date.now()) {
         connectionLostFrame(globalBuffer)
     }
