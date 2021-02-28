@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "mjpeg-consumer": "^2.0.0"
+  }
+}
